@@ -1,0 +1,12 @@
+[package]
+name = "eztcp"
+version = "0.1.0"
+authors = ["Larsouille"]
+description = "eztcp is a simple bin when developing with tcp and you want to test quickly your app."
+license = "MIT/Apache-2.0"
+repository = "https://github.com/Larsouille25/eztcp"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
