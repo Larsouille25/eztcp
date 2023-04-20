@@ -1,48 +1,51 @@
-use std::net::TcpStream;
 use std::io;
+use std::net::TcpStream;
+
+fn read_line() -> String {
+    let mut input = String::new();
+    match io::stdin().read_line(&mut input) {
+        Ok(_) => input.to_owned().replace("\r", "").replace("\n", ""),
+        Err(err) => {
+            panic!("ERR: {}", err);
+        }
+    }
+}
 
 fn main() {
+    let mut stream: TcpStream;
+
     loop {
         println!("📜  Menu :");
-        println!("[1] 📡 Connect to server");
-        println!("[2] 📨 Send a message");
-        println!("[3] 👂 Listen for response of the server");
-        println!("[4] ❌ Disconnect to server");
-        println!("[5] 👋 Exit");
+        println!("1] 📡 Connect to server");
+        println!("2] 📨 Send a message");
+        println!("3] 👂 Listen for response of the server");
+        println!("4] ❌ Disconnect to server");
+        println!("5] 👋 Exit");
 
-        let mut input = String::new();
+        let input = if let Ok(i) = read_line().parse::<i32>() {
+            i
+        } else {
+            0
+        };
 
-        match io::stdin().read_line(&mut input) {
-            Ok(_len) => {
-                match input[..1].parse() {
-                    Ok(i) => {
-                        let input: i32 = i;
-                        match input {
-                            1 => {},
-                            2 => {},
-                            3 => {},
-                            4 => {},
-                            5 => {
-                                println!("\n Goodbye! 👋");
-                                break;
-                            },
-                            _ => {
-                                println!("Please choose a number between 1 and 5.");
-                            }
-                        }
-                    },
+        match input {
+            1 => {
+                let addr = read_line();
+
+                match TcpStream::connect(addr) {
+                    Ok(s) => {
+                        stream = s;
+                        println!(" 📡 Connect successfully to `{:?}`!", stream);
+                    }
                     Err(err) => {
-                        println!("ERR: {:?}", err);
-                        break;
+                        println!("ERR: {}", err);
                     }
                 }
-            }, Err(err) => {
-                println!("ERR: {:?}", err);
-                break;
             }
+            5 => break,
+            _ => println!(" Enter a correct number between 1 and 5."),
         }
 
-
-        println!("");
+        println!(""); // It's here because it looks prettier with it
     }
 }
