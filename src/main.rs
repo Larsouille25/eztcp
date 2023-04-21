@@ -1,16 +1,15 @@
 use std::io::{self, Write};
 use std::net::TcpStream;
 
-
 /// It reads a line and remove \r and \n to the returned string.
 fn read_line() -> String {
-    let mut input = String::new();
-    match io::stdin().read_line(&mut input) {
-        Ok(_) => input.to_owned().replace(['\r', '\n'], ""),
-        Err(err) => {
-            panic!("ERR: {}", err);
-        }
-    }
+    //TODO: Reuse the same input buffer instead of allocating a new string at every prompt.
+    let mut input_buf = String::new();
+    io::stdin()
+    .read_line(&mut input_buf) 
+    .expect("Failed to read line");
+
+    input_buf.trim().to_string()
 }
 
 fn main() {
@@ -18,15 +17,14 @@ fn main() {
 
     loop {
         print!("  eztcp | ");
-        match stream {
-            Some(ref s) => print!("Connected to {}", s.peer_addr().unwrap()),
-            None => print!("Not connected")
+        match &stream {
+            Some(s) => print!("Connected to {}\n", s.peer_addr().unwrap()),
+            None => print!("Not connected\n")
         }
         println!("1]  Connect to server");
-        println!("2]  Send a message");
-        println!("3]  Listen for response of the server");
-        println!("4]  Disconnect to server");
-        println!("5]  Exit");
+        println!("2]  Send a message & print response");
+        println!("3]  Disconnect to server");
+        println!("4]  Exit");
 
         let input = if let Ok(i) = read_line().parse::<i32>() {
             i
@@ -43,24 +41,56 @@ fn main() {
                 match TcpStream::connect(addr) {
                     Ok(s) => {
                         stream = Some(s);
-                        println!(" 📡 Connect successfully to `{}`!", stream.unwrap().peer_addr().unwrap());
+                        println!(
+                            "\n 📡 Connect successfully to `{}`!",
+                            stream.as_ref().unwrap().peer_addr().unwrap()
+                        );
                     }
                     Err(err) => {
                         println!("ERR: {}", err);
+                        stream = None;
                     }
                 }
             }
             2 => {
-                // let msg = read_line();
-                // match stream.write(msg.as_bytes()) {
-                //     Ok(a) => {
-                //         println!("a = {a}");
-                //     }
-                //     Err(err) => println!("ERR: {}", err)
-                // }
+                match stream.as_mut() {
+                    Some(_s) => {
+                        let msg = read_line();
+                        match _s.write(msg.as_bytes()) {
+                            Ok(a) => {
+                                println!("a = {a}");
+                            }
+                            Err(err) => println!("ERR: {}", err)
+                        }
+                    }
+                    None => {
+                        println!("\n ❌ You're currently not connected to a tcp server!");
+                    }
+                }
             }
-            5 => break,
-            _ => println!(" Enter a correct number between 1 and 5."),
+            3 => {
+                match stream.as_mut() {
+                    Some(_s) => {
+                        match _s.shutdown(std::net::Shutdown::Both) {
+                            Ok(..) => {
+                                stream = None;
+                                println!("\n 📡 Disconnect successfully!");
+                            }
+                            Err(err) => {
+                                println!("ERR: {}", err);
+                            }
+                        }
+                    }
+                    None => {
+                        println!("\n ❌ You're currently not connected to a tcp server!");
+                    }
+                }
+            }
+            4 => {
+                println!("\n 👋 Goodbye");
+                break;
+            },
+            _ => println!(" Enter a correct number between 1 and 4."),
         }
 
         println!(); // It's here because it looks prettier with it
