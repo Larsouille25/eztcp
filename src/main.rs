@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::io::{self, Write, Read};
 use std::net::TcpStream;
 
 /// It reads a line and remove \r and \n to the returned string.
@@ -55,12 +55,27 @@ fn main() {
             2 => {
                 match stream.as_mut() {
                     Some(_s) => {
+                        print!("Message to send: ");
+                        io::stdout().flush().unwrap();
+
                         let msg = read_line();
                         match _s.write(msg.as_bytes()) {
-                            Ok(a) => {
-                                println!("a = {a}");
+                            Ok(_a) => {
+                                let mut buf = [0; 1024];
+                                match _s.read(&mut buf) {
+                                    Ok(_v) => {
+                                        println!("Response: `{}`", String::from_utf8_lossy(&buf));
+                                    }
+                                    Err(err) => {
+                                        println!("ERR: {}", err);
+                                        stream = None
+                                    }
+                                }
                             }
-                            Err(err) => println!("ERR: {}", err)
+                            Err(err) => {
+                                println!("ERR: {}", err);
+                                stream = None
+                            }
                         }
                     }
                     None => {
