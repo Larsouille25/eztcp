@@ -1,8 +1,11 @@
 use std::net::TcpStream;
-use std::thread::{self, JoinHandle};
-use crossterm::style::{Print, SetForegroundColor, SetBackgroundColor, ResetColor, Color, Attribute};
-use crossterm::execute;
-use std::io::stdout;
+use std::io::{stdout, Write};
+
+use crossterm::style::{Print, SetForegroundColor, SetBackgroundColor, ResetColor, Color};
+use crossterm::{execute, ExecutableCommand, terminal, cursor};
+use crossterm::cursor::MoveToPreviousLine;
+use crossterm::event::{read, Event, KeyEventKind, KeyCode};
+
 
 pub fn menu(stream: &Option<TcpStream>) {
     print!("  eztcp | ");
@@ -12,28 +15,52 @@ pub fn menu(stream: &Option<TcpStream>) {
     }
 
     let mut menu = Menu::new();
-    menu.add_item("Connect to server".to_string());
-    menu.add_item("Send a message & print response".to_string());
-    menu.add_item("Disconnect to server".to_string());
-    menu.add_item("Exit".to_string());
+    menu.add_item(" Connect to server                ".to_string(), Box::new(|_a| {}));
+    menu.add_item(" Send a message & print response  ".to_string(), Box::new(|_a| {}));
+    menu.add_item(" Disconnect to server             ".to_string(), Box::new(|_a| {}));
+    menu.add_item(" Exit                             ".to_string(), Box::new(|_a| {}));
     menu.draw();
+    let mut event_read = true;
     
     loop {
         // `read()` blocks until an `Event` is available
         match read().unwrap() {
             Event::Key(event) 
             if event.kind == KeyEventKind::Press && event.code == KeyCode::Up => {
-                // println!("{:?}", event);
-                menu.selected -= 1;
+                if event_read {
+                    // println!("{:?}", event);
+                    menu.item_up();
+                    // println!("menu.selected = {}", menu.selected);
+                    menu.move_cursor();
+                    menu.draw();
+                }
             }
             Event::Key(event) 
             if event.kind == KeyEventKind::Press && event.code == KeyCode::Down => {
-                // println!("{:?}", event);
-                menu.selected += 1;
+                if event_read {
+                    // println!("{:?}", event);
+                    menu.item_down();
+                    // println!("menu.selected = {}", menu.selected);
+                    menu.move_cursor();
+                    menu.draw();
+                }
             }
             Event::Key(event)
             if event.kind == KeyEventKind::Press && event.code == KeyCode::Enter => {
-                println!("`{}` was selected!", menu.items[menu.selected].content);
+                stdout().execute(terminal::Clear(terminal::ClearType::Purge)).expect("ERR: terminal can't be clear");
+                event_read = false;
+                stdout().execute(cursor::MoveTo(1, 1)).expect("ERR: Can't move the cursor");
+
+                println!("`{}` was selected!", menu.items[menu.selected - 1].content);
+                println!("AAAAAAAAAAAAAAAAAAAAAAAA");
+                println!("AAAAAAAAAAAAAAAAAAAAAAAA");
+                println!("AAAAAAAAAAAAAAAAAAAAAAAA");
+                println!("AAAAAAAAAAAAAAAAAAAAAAAA");
+
+                
+                stdout().execute(terminal::Clear(terminal::ClearType::All)).expect("ERR: terminal can't be clear");
+                event_read = true;
+                // menu.draw();
             }
             _ => {}
         }
@@ -48,8 +75,26 @@ struct Menu {
 impl Menu {
     pub fn new() -> Menu { Menu { items: vec![], selected: 1}}
 
-    pub fn add_item(&mut self, content: String) {
-        self.items.push(Item::new(content));
+    pub fn add_item(&mut self, content: String, action: Box<dyn Fn(TcpStream)>) {
+        self.items.push(Item::new(content, action));
+    }
+
+    pub fn item_up(&mut self) {
+        if self.selected == 0 {
+            self.selected = self.items.len();
+        } else if self.selected == 1 {
+            self.selected = self.items.len();
+        }else {
+            self.selected -= 1;
+        }
+    }
+
+    pub fn item_down(&mut self) {
+        if self.selected == self.items.len() {
+            self.selected = 1;
+        } else {
+            self.selected += 1;
+        }
     }
 
     pub fn draw(&mut self) {
@@ -71,38 +116,27 @@ impl Menu {
             }
         }
     }
+
+    pub fn move_cursor(&self) {
+        
+        match stdout().execute(MoveToPreviousLine( self.items.len() as u16 )) {
+            Ok(..) => {}
+            Err(err) => {
+                println!("ERR: {}", err);
+            }
+        }
+    }
 }
 
-#[derive(Debug)]
 struct Item{
     pub content: String,
-    pub action: (), // action will be a closure
+    pub action: Box<dyn Fn(TcpStream)>, // action will be a closure
     pub selected: bool
 }
 
-impl Item {
-    pub fn new(content: String) -> Item { Item { content, action: (), selected: false} }
-}
-
-use crossterm::event::{read, Event, KeyEventKind, KeyCode};
-
-pub fn print_events() -> crossterm::Result<()> {
-    loop {
-        // `read()` blocks until an `Event` is available
-        match read()? {
-            Event::Key(event) 
-            if event.kind == KeyEventKind::Press && event.code == KeyCode::Up => {
-                println!("{:?}", event);
-            }
-            Event::Key(event) 
-            if event.kind == KeyEventKind::Press && event.code == KeyCode::Down => {
-                println!("{:?}", event);
-            }
-            Event::Key(event)
-            if event.kind == KeyEventKind::Press && event.code == KeyCode::Enter => {
-                println!("{:?}", event);
-            }
-            _ => {}
-        }
+impl Item{
+    pub fn new(content: String, action:  Box<dyn Fn(TcpStream)>) -> Item
+    {
+        Item { content, action: action, selected: false}
     }
 }
