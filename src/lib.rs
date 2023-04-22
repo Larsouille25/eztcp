@@ -8,18 +8,18 @@ use crossterm::event::{read, Event, KeyEventKind, KeyCode};
 
 
 pub fn menu(stream: &Option<TcpStream>) {
-    print!("  eztcp | ");
-    match &stream {
-        Some(s) => print!("Connected to {}\n", s.peer_addr().unwrap()),
-        None => print!("Not connected\n")
-    }
+    // print!("  eztcp | ");
+    // match &stream {
+    //     Some(s) => print!("Connected to {}\n", s.peer_addr().unwrap()),
+    //     None => print!("Not connected\n")
+    // }
 
     let mut menu = Menu::new();
     menu.add_item(" Connect to server                ".to_string(), Box::new(|_a| {}));
     menu.add_item(" Send a message & print response  ".to_string(), Box::new(|_a| {}));
     menu.add_item(" Disconnect to server             ".to_string(), Box::new(|_a| {}));
     menu.add_item(" Exit                             ".to_string(), Box::new(|_a| {}));
-    menu.draw();
+    menu.draw(stream);
     let mut event_read = true;
     
     loop {
@@ -28,41 +28,58 @@ pub fn menu(stream: &Option<TcpStream>) {
             Event::Key(event) 
             if event.kind == KeyEventKind::Press && event.code == KeyCode::Up => {
                 if event_read {
+                    stdout().execute(
+                        terminal::Clear(terminal::ClearType::FromCursorUp)).expect("ERR: terminal can't be clear"
+                    );
                     // println!("{:?}", event);
                     menu.item_up();
                     // println!("menu.selected = {}", menu.selected);
                     menu.move_cursor();
-                    menu.draw();
+                    menu.draw(stream);
                 }
             }
             Event::Key(event) 
             if event.kind == KeyEventKind::Press && event.code == KeyCode::Down => {
                 if event_read {
+                    stdout().execute(
+                        terminal::Clear(terminal::ClearType::FromCursorUp)).expect("ERR: terminal can't be clear"
+                    );
                     // println!("{:?}", event);
                     menu.item_down();
                     // println!("menu.selected = {}", menu.selected);
                     menu.move_cursor();
-                    menu.draw();
+                    menu.draw(stream);
                 }
             }
             Event::Key(event)
             if event.kind == KeyEventKind::Press && event.code == KeyCode::Enter => {
-                stdout().execute(terminal::Clear(terminal::ClearType::Purge)).expect("ERR: terminal can't be clear");
-                event_read = false;
-                stdout().execute(cursor::MoveTo(1, 1)).expect("ERR: Can't move the cursor");
-
-                println!("`{}` was selected!", menu.items[menu.selected - 1].content);
-                println!("AAAAAAAAAAAAAAAAAAAAAAAA");
-                println!("AAAAAAAAAAAAAAAAAAAAAAAA");
-                println!("AAAAAAAAAAAAAAAAAAAAAAAA");
-                println!("AAAAAAAAAAAAAAAAAAAAAAAA");
+                stdout().execute(
+                    terminal::Clear(terminal::ClearType::FromCursorUp)).expect("ERR: terminal can't be clear"
+                );
+                stdout().execute(
+                    terminal::Clear(terminal::ClearType::FromCursorDown)).expect("ERR: terminal can't be clear"
+                );
+                // event_read = false;
+                stdout().execute(cursor::MoveToNextLine(1)).expect("ERR: Can't move the cursor");
+                writeln!(stdout(), "Does it works ?").expect("ERR: cannot write to stdout");
+                writeln!(stdout(), "Hmmm sure").expect("ERR: cannot write to stdout");
+                writeln!(stdout(), "REAALLYYY ??? 🥹").expect("ERR: cannot write to stdout");
+                writeln!(stdout(), "YEEEESSS").expect("ERR: cannot write to stdout");
+                println!("and with println ?");
+                println!("ANOTHER LINE :)");
+                println!("and another :)");
 
                 
-                stdout().execute(terminal::Clear(terminal::ClearType::All)).expect("ERR: terminal can't be clear");
-                event_read = true;
+                // stdout().execute(terminal::Clear(terminal::ClearType::All)).expect("ERR: terminal can't be clear");
+                // event_read = true;
                 // menu.draw();
             }
-            _ => {}
+            _ => {
+                if event_read {
+                    print!(" > `{}` was selected!\r", menu.items[menu.selected - 1].content);
+                    stdout().flush().unwrap();
+                }
+            }
         }
     }
 }
@@ -97,7 +114,12 @@ impl Menu {
         }
     }
 
-    pub fn draw(&mut self) {
+    pub fn draw(&mut self, stream: &Option<TcpStream>) {
+        print!("  eztcp | ");
+        match &stream {
+            Some(s) => print!("Connected to {}\n", s.peer_addr().unwrap()),
+            None => print!("Not connected\n")
+        }
         for (pos, item) in self.items.iter_mut().enumerate() {
             // println!("pos: {pos}, item = {:?}", item);
             if (pos + 1) == self.selected {
@@ -119,7 +141,7 @@ impl Menu {
 
     pub fn move_cursor(&self) {
         
-        match stdout().execute(MoveToPreviousLine( self.items.len() as u16 )) {
+        match stdout().execute(MoveToPreviousLine( self.items.len() as u16 + 1)) {
             Ok(..) => {}
             Err(err) => {
                 println!("ERR: {}", err);
